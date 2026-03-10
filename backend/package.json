@@ -1,0 +1,28 @@
+{
+  "name": "@udayton-coil-team2/backend",
+  "version": "0.0.1",
+  "keywords": [
+    "Express",
+    "Node.js",
+    "microservice"
+  ],
+  "homepage": "https://github.com/UD-CPS449-COILPROJECT/COIL",
+  "bugs": {
+    "url": "https://github.com/UD-CPS449-COILPROJECT/COIL/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UD-CPS449-COILPROJECT/COIL.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "node index.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  }
+}
