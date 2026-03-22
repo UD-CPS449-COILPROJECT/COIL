@@ -1,24 +1,21 @@
-const form = document.getElementById('fraud-form');
-const resultBox = document.getElementById('result');
-const statusEl = document.getElementById('status');
-const riskScoreEl = document.getElementById('riskScore');
-const reasonEl = document.getElementById('reason');
-
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-form.addEventListener('submit', (event) => {
-  event.preventDefault();
+function toBoolean(value) {
+  return value === true || value === 'true' || value === '1';
+}
 
-  const amount = Number(document.getElementById('amount').value);
-  const usualAmount = Number(document.getElementById('usualAmount').value);
-  const location = document.getElementById('location').value.trim().toLowerCase();
-  const usualLocation = document.getElementById('usualLocation').value.trim().toLowerCase();
-  const velocity = Number(document.getElementById('velocity').value);
-  const merchantRisk = document.getElementById('merchantRisk').value;
-  const newDevice = document.getElementById('newDevice').checked;
-  const newPayee = document.getElementById('newPayee').checked;
+// Encapsulates the fraud-score scoring formula used by the UI.
+export function evaluateFraud(payload) {
+  const amount = Number(payload.amount);
+  const usualAmount = Number(payload.usualAmount);
+  const location = String(payload.location || '').trim().toLowerCase();
+  const usualLocation = String(payload.usualLocation || '').trim().toLowerCase();
+  const velocity = Number(payload.velocity);
+  const merchantRisk = String(payload.merchantRisk || 'low').toLowerCase();
+  const newDevice = toBoolean(payload.newDevice);
+  const newPayee = toBoolean(payload.newPayee);
 
   let score = 8;
   const reasons = [];
@@ -63,19 +60,13 @@ form.addEventListener('submit', (event) => {
   }
 
   score = clamp(Math.round(score), 0, 100);
-
   const flagged = score >= 55;
   const status = flagged ? 'Flagged' : 'Not Flagged';
 
-  resultBox.classList.remove('neutral', 'safe', 'flagged');
-  resultBox.classList.add(flagged ? 'flagged' : 'safe');
-
-  statusEl.textContent = status;
-  riskScoreEl.textContent = String(score);
-
-  if (reasons.length === 0) {
-    reasonEl.textContent = 'Low-risk profile based on provided inputs.';
-  } else {
-    reasonEl.textContent = `Key signals: ${reasons.join('; ')}.`;
-  }
-});
+  return {
+    status,
+    score,
+    flagged,
+    reasons
+  };
+}

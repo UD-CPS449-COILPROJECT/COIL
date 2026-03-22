@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Fraud Detection System</title>
+  <title>Fraud Check MicroService</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -11,82 +11,190 @@
 </head>
 <body>
   <header class="top-nav">
-    <a href="./index.html" class="nav-link">Home</a>
-    <a href="./fraud-check.html" class="nav-button">Fraud Check MicroService</a>
+    <a href="/" class="nav-button">Home</a>
   </header>
 
   <main class="page-shell">
-    <section class="hero">
-      <h1>Project Overview</h1>
+    <section class="hero fraud-hero">
+      <h1>Fraud Check MicroService</h1>
       <p>
-        Our team is building an AI-powered fraud detection system for banking transactions. The platform analyzes
-        transaction behavior in real time to flag suspicious activity, reduce false positives, and help banks respond
-        faster to potential fraud cases.
+        Frontend-only demo for AI fraud scoring. Enter transaction signals and the UI returns a risk score and
+        a recommendation of <strong>Flagged</strong> or <strong>Not Flagged</strong>.
       </p>
-      <p>
-        This project is being developed by university students in Vietnam, with a focus on practical deployment,
-        scalable cloud architecture, and explainable model outputs so analysts can trust and validate each prediction.
-      </p>
-      <a class="primary-cta" href="./fraud-check.html">Open Fraud Check MicroService</a>
     </section>
 
-    <section class="demo-grid">
-      <article class="demo-card">
-        <h2>System Demo</h2>
-        <div class="video-placeholder" role="img" aria-label="System demo preview">
-          <span>Video Preview</span>
-        </div>
-      </article>
-      <article class="demo-card">
-        <h2>API Demo</h2>
-        <div class="video-placeholder" role="img" aria-label="API demo preview">
-          <span>Video Preview</span>
-        </div>
-      </article>
-    </section>
+    <section class="fraud-layout">
+      <article class="fraud-card">
+        <h2>Transaction Input</h2>
+        <form id="fraud-form" class="fraud-form">
+          <label>
+            API Key (UI only)
+            <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
+          </label>
 
-    <section class="team-grid">
-      <article class="profile-card">
-        <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=700&q=80" alt="Team member portrait 1">
-        <h3>Team Member 1</h3>
-        <p>Project Lead</p>
+          <label>
+            Account ID
+            <input type="text" id="accountId" placeholder="ACC-2026-001" required>
+          </label>
+
+          <label>
+            Amount (USD)
+            <input type="number" id="amount" min="1" step="0.01" placeholder="5000" required>
+          </label>
+
+          <label>
+            User's Usual Amount (USD)
+            <input type="number" id="usualAmount" min="1" step="0.01" placeholder="250" required>
+          </label>
+
+          <label>
+            Transaction Location
+            <input type="text" id="location" placeholder="New York, US" required>
+          </label>
+
+          <label>
+            Usual Location
+            <input type="text" id="usualLocation" placeholder="Ho Chi Minh City, VN" required>
+          </label>
+
+          <label>
+            Transactions in Last 24h
+            <input type="number" id="velocity" min="0" step="1" value="1" required>
+          </label>
+
+          <label>
+            Merchant Risk Level
+            <select id="merchantRisk">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </label>
+
+          <div class="check-row">
+            <label class="check-item">
+              <input type="checkbox" id="newDevice">
+              New Device
+            </label>
+            <label class="check-item">
+              <input type="checkbox" id="newPayee">
+              New Payee
+            </label>
+          </div>
+
+          <button type="submit" class="primary-cta">Run Fraud Check</button>
+        </form>
       </article>
-      <article class="profile-card">
-        <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=700&q=80" alt="Team member portrait 2">
-        <h3>Team Member 2</h3>
-        <p>ML Engineer</p>
-      </article>
-      <article class="profile-card">
-        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=700&q=80" alt="Team member portrait 3">
-        <h3>Team Member 3</h3>
-        <p>Data Engineer</p>
-      </article>
-      <article class="profile-card">
-        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=700&q=80" alt="Team member portrait 4">
-        <h3>Team Member 4</h3>
-        <p>Frontend Developer</p>
-      </article>
-      <article class="profile-card">
-        <img src="https://images.unsplash.com/photo-1521119989659-a83eee488004?auto=format&fit=crop&w=700&q=80" alt="Team member portrait 5">
-        <h3>Team Member 5</h3>
-        <p>Backend Developer</p>
-      </article>
-      <article class="profile-card">
-        <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=700&q=80" alt="Team member portrait 6">
-        <h3>Team Member 6</h3>
-        <p>Cloud Engineer</p>
-      </article>
-      <article class="profile-card">
-        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=700&q=80" alt="Team member portrait 7">
-        <h3>Team Member 7</h3>
-        <p>QA and Testing</p>
-      </article>
-      <article class="profile-card">
-        <img src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=700&q=80" alt="Team member portrait 8">
-        <h3>Team Member 8</h3>
-        <p>Research and Reporting</p>
+
+      <article class="fraud-card result-card">
+        <h2>AI Output</h2>
+        <p class="result-note">Result appears after running the fraud check.</p>
+
+        <div id="result" class="result-box neutral">
+          <p class="status-line">Status: <span id="status">Waiting</span></p>
+          <p>Risk Score: <span id="riskScore">0</span>/100</p>
+          <p id="reason">Provide transaction details and submit the form.</p>
+        </div>
       </article>
     </section>
   </main>
+
+  <script src="./config.js"></script>
+  <script>
+    // Smooth-scroll placeholder for future nav sections.
+    document.querySelectorAll('a[href="#"]').forEach((link) => {
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+
+    const form = document.getElementById('fraud-form');
+    const resultBox = document.getElementById('result');
+    const statusEl = document.getElementById('status');
+    const riskScoreEl = document.getElementById('riskScore');
+    const reasonEl = document.getElementById('reason');
+
+    function resolveFraudCheckEndpoint() {
+      const configuredBackendUrl = window.__APP_CONFIG__?.backendUrl?.trim();
+
+      if (!configuredBackendUrl) {
+        return '/fraud-check';
+      }
+
+      if (/^https?:\/\//i.test(configuredBackendUrl)) {
+        return configuredBackendUrl.replace(/\/+$/, '') + '/fraud-check';
+      }
+
+      // Service-style host:port from compose (backend:8080) should map to the same
+      // host that served the page, but keep the mapped backend port.
+      const serviceAddress = configuredBackendUrl.match(/^([^:/]+):(\d+)$/);
+      if (serviceAddress) {
+        return `${window.location.protocol}//${window.location.hostname}:${serviceAddress[2]}/fraud-check`;
+      }
+
+      if (configuredBackendUrl === '/fraud-check') {
+        return '/fraud-check';
+      }
+
+      return configuredBackendUrl.replace(/\/+$/, '') + '/fraud-check';
+    }
+
+    // POSTs form data to backend microservice and renders the returned score.
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const payload = {
+        accountId: document.getElementById('accountId').value.trim(),
+        amount: Number(document.getElementById('amount').value),
+        usualAmount: Number(document.getElementById('usualAmount').value),
+        location: document.getElementById('location').value.trim(),
+        usualLocation: document.getElementById('usualLocation').value.trim(),
+        velocity: Number(document.getElementById('velocity').value),
+        merchantRisk: document.getElementById('merchantRisk').value,
+        newDevice: document.getElementById('newDevice').checked,
+        newPayee: document.getElementById('newPayee').checked,
+        apiKey: document.getElementById('apiKey').value.trim() // Kept for UI parity; backend ignores for now.
+      };
+
+      resultBox.classList.remove('safe', 'flagged');
+      resultBox.classList.add('neutral');
+      statusEl.textContent = 'Analyzing...';
+      riskScoreEl.textContent = '...';
+      reasonEl.textContent = 'Calling backend fraud-check endpoint.';
+
+      try {
+        const response = await fetch(resolveFraudCheckEndpoint(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const payloadResponse = await response.json().catch(() => {
+          throw new Error('Unable to parse response from fraud-check service.');
+        });
+
+        if (!response.ok) {
+          throw new Error(payloadResponse.error || payloadResponse.message || 'Fraud check request failed.');
+        }
+
+        const { status, riskScore, reasons = [], flagged } = payloadResponse;
+        const safeReasons = reasons.length ? `Key signals: ${reasons.join('; ')}.` : 'Low-risk profile based on provided inputs.';
+        const isFlagged = typeof flagged === 'boolean' ? flagged : Number(riskScore) >= 55;
+
+        resultBox.classList.remove('neutral', 'safe', 'flagged');
+        resultBox.classList.add(isFlagged ? 'flagged' : 'safe');
+        statusEl.textContent = status || (isFlagged ? 'Flagged' : 'Not Flagged');
+        riskScoreEl.textContent = String(riskScore ?? 0);
+        reasonEl.textContent = safeReasons;
+      } catch (error) {
+        resultBox.classList.remove('safe', 'flagged');
+        resultBox.classList.add('neutral');
+        statusEl.textContent = 'Error';
+        riskScoreEl.textContent = '0';
+        reasonEl.textContent = error.message || 'Could not reach fraud-check service.';
+      }
+    });
+  </script>
 </body>
 </html>
