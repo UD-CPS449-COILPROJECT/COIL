@@ -1,0 +1,6 @@
+services:
+  frontend:
+    # Serve live frontend files directly from your working tree.
+    # Static files update instantly in the container when saved.
+    volumes:
+      - ./frontend:/usr/share/nginx/html
