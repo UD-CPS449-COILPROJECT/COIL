@@ -20,7 +20,7 @@ down-dev:
 
 
 # Build the project (target = all|frontend|backend)
-build target="all":
+build target="all": deps
     #!/usr/bin/env bash
     case "{{target}}" in
         "frontend"|"backend")
@@ -40,6 +40,7 @@ build target="all":
 # Deploy the project
 deploy target="all":
     #!/usr/bin/env bash
+    just build "{{target}}"
     case "{{target}}" in
         "frontend"|"backend")
             docker push {{docker_repo}}:{{target}}
