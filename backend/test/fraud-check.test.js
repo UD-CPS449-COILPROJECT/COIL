@@ -15,39 +15,6 @@ const highRiskPayload = {
   newPayee: false
 };
 
-const merchantRiskPayload = {
-  accountId: 'ACC-2026-003',
-  amount: 1000,
-  usualAmount: 200,
-  location: 'denver',
-  usualLocation: 'dayton',
-  velocity: 2,
-  merchantRisk: 'low',
-  newDevice: true,
-  newPayee: false
-};
-
-const deterministicHighRiskReasons = [
-  'amount is far above the account\'s usual range',
-  'transaction location differs from the usual location',
-  'merchant category is marked as high risk',
-  'transaction originated from a new device'
-];
-
-const deterministicHighRiskResponse = {
-  status: 'Flagged',
-  riskScore: 100,
-  flagged: true,
-  reasons: deterministicHighRiskReasons
-};
-
-const explanationReasons = [
-  'amount is far above the account\'s typical activity',
-  'transaction location differs from the usual profile',
-  'merchant category is considered high risk',
-  'the payment came from a new device'
-];
-
 function createJsonResponse(body, { ok = true, status = 200 } = {}) {
   return {
     ok,
@@ -61,14 +28,8 @@ function createJsonResponse(body, { ok = true, status = 200 } = {}) {
   };
 }
 
-function createTimeoutError(message = 'The operation was aborted due to timeout') {
-  const error = new Error(message);
-  error.name = 'TimeoutError';
-  return error;
-}
-
-function createExplanationResponse(reasons, { fenced = false } = {}) {
-  const payload = JSON.stringify({ reasons });
+function createDecisionResponse(decision, { fenced = false } = {}) {
+  const payload = JSON.stringify(decision);
   const content = fenced ? `\`\`\`json\n${payload}\n\`\`\`` : payload;
 
   return createJsonResponse({
@@ -82,21 +43,17 @@ function createExplanationResponse(reasons, { fenced = false } = {}) {
   });
 }
 
-function createEvaluator(fetchImpl, env = {}) {
-  return createFraudEvaluator({
-    fetchImpl,
-    env: {
-      OPENROUTER_API_KEY: 'test-key',
-      OPENROUTER_MODEL: 'openrouter/free',
-      OPENROUTER_TIMEOUT_MS: '15000',
-      ...env
-    }
-  });
-}
-
 function createAppWithFetch(fetchImpl, env = {}) {
   return createApp({
-    evaluateFraud: createEvaluator(fetchImpl, env)
+    evaluateFraud: createFraudEvaluator({
+      fetchImpl,
+      env: {
+        OPENROUTER_API_KEY: 'test-key',
+        OPENROUTER_MODEL: 'openrouter/free',
+        OPENROUTER_TIMEOUT_MS: '15000',
+        ...env
+      }
+    })
   });
 }
 
@@ -136,31 +93,21 @@ async function invokeFraudCheck(app, body) {
   };
 }
 
-function assertPrimaryRequestShape(requestBody) {
-  assert.equal(requestBody.model, 'openrouter/free');
-  assert.equal(requestBody.stream, false);
-  assert.equal(requestBody.provider.require_parameters, true);
-  assert.deepEqual(requestBody.plugins, [{ id: 'response-healing' }]);
-  assert.deepEqual(requestBody.response_format.json_schema.schema.required, ['reasons']);
-}
-
-function assertFallbackRequestShape(requestBody) {
-  assert.equal(requestBody.response_format, undefined);
-  assert.equal(requestBody.provider, undefined);
-  assert.equal(requestBody.plugins, undefined);
-  assert.equal(requestBody.stream, false);
-}
-
-function assertDeterministicHighRiskResponse(response) {
-  assert.equal(response.status, 200);
-  assert.deepEqual(response.body, deterministicHighRiskResponse);
-}
-
-test('POST /fraud-check uses deterministic scoring and only takes explanations from the LLM', async () => {
+test('POST /fraud-check uses OpenRouter decision output when schema-valid', async () => {
   let capturedRequest;
   const app = createAppWithFetch(async (_url, options) => {
     capturedRequest = JSON.parse(options.body);
-    return createExplanationResponse(explanationReasons);
+    return createDecisionResponse({
+      status: 'Flagged',
+      riskScore: 93,
+      flagged: true,
+      reasons: [
+        'transaction amount is much higher than normal behavior',
+        'transaction location differs from historical activity',
+        'merchant category has elevated fraud risk',
+        'payment came from a previously unseen device'
+      ]
+    });
   });
 
   const response = await invokeFraudCheck(app, highRiskPayload);
@@ -168,60 +115,36 @@ test('POST /fraud-check uses deterministic scoring and only takes explanations f
   assert.equal(response.status, 200);
   assert.deepEqual(response.body, {
     status: 'Flagged',
-    riskScore: 100,
+    riskScore: 93,
     flagged: true,
-    reasons: explanationReasons
+    reasons: [
+      'transaction amount is much higher than normal behavior',
+      'transaction location differs from historical activity',
+      'merchant category has elevated fraud risk',
+      'payment came from a previously unseen device'
+    ]
   });
-  assertPrimaryRequestShape(capturedRequest);
-  assert.equal(capturedRequest.messages[1].content.includes('ACC-2026-001'), false);
-  assert.equal(capturedRequest.messages[1].content.includes('"riskScore": 100'), true);
-  assert.equal(capturedRequest.messages[1].content.includes('amount is far above the account\'s usual range'), true);
+  assert.equal(capturedRequest.model, 'openrouter/free');
+  assert.equal(capturedRequest.response_format.type, 'json_schema');
+  assert.deepEqual(capturedRequest.response_format.json_schema.schema.required, ['status', 'riskScore', 'flagged', 'reasons']);
+  assert.equal(capturedRequest.messages[1].content.includes('ACC-2026-001'), true);
+  assert.equal(capturedRequest.messages[1].content.includes('5000'), true);
 });
 
-test('POST /fraud-check retries with a simpler OpenRouter request after compatibility 404s', async () => {
-  const requestBodies = [];
-  const app = createAppWithFetch(async (_url, options) => {
-    requestBodies.push(JSON.parse(options.body));
-
-    if (requestBodies.length === 1) {
-      return createJsonResponse(
-        '{"error":{"message":"No endpoints found that can handle the requested parameters."}}',
-        {
-          ok: false,
-          status: 404
-        }
-      );
-    }
-
-    return createExplanationResponse([
-      'amount is substantially above the usual range',
-      'transaction location differs from the usual location',
-      'merchant category is high risk',
-      'transaction originated from a new device'
-    ], { fenced: true });
-  });
+test('POST /fraud-check accepts fenced JSON when content is otherwise schema-valid', async () => {
+  const app = createAppWithFetch(async () => createDecisionResponse({
+      status: 'Not Flagged',
+      riskScore: 40,
+      flagged: false,
+      reasons: ['amount and behavior align with known account history']
+    }, { fenced: true }));
 
   const response = await invokeFraudCheck(app, highRiskPayload);
 
   assert.equal(response.status, 200);
-  assert.equal(response.body.riskScore, 100);
-  assert.equal(response.body.flagged, true);
-  assert.equal(requestBodies.length, 2);
-  assertPrimaryRequestShape(requestBodies[0]);
-  assertFallbackRequestShape(requestBodies[1]);
-});
-
-test('POST /fraud-check falls back to deterministic reasons when the LLM returns contradictory meta commentary', async () => {
-  const app = createAppWithFetch(async () => createExplanationResponse([
-      'low risk overall',
-      'safe routine purchase',
-      'not flagged by the model',
-      'benign account activity'
-    ]));
-
-  const response = await invokeFraudCheck(app, highRiskPayload);
-
-  assertDeterministicHighRiskResponse(response);
+  assert.equal(response.body.status, 'Not Flagged');
+  assert.equal(response.body.riskScore, 40);
+  assert.equal(response.body.flagged, false);
 });
 
 test('POST /fraud-check returns 400 for invalid request payloads', async () => {
@@ -243,7 +166,7 @@ test('POST /fraud-check returns 400 for invalid request payloads', async () => {
   assert.ok(response.body.details.includes('merchantRisk must be one of low, medium, high'));
 });
 
-test('POST /fraud-check still returns 500 when OPENROUTER_API_KEY is missing', async () => {
+test('POST /fraud-check returns 500 when OPENROUTER_API_KEY is missing', async () => {
   const app = createApp({
     evaluateFraud: createFraudEvaluator({
       fetchImpl: async () => {
@@ -259,141 +182,58 @@ test('POST /fraud-check still returns 500 when OPENROUTER_API_KEY is missing', a
   assert.deepEqual(response.body, { error: 'Fraud review failed' });
 });
 
-const nonFatalFallbackScenarios = [
-  {
-    name: 'provider 429 errors',
-    fetchImpl: async () => createJsonResponse(
-      '{"error":{"message":"Provider returned error","code":429}}',
+test('POST /fraud-check returns 500 when OpenRouter returns non-OK status', async () => {
+  const app = createAppWithFetch(async () => createJsonResponse(
+      { error: { message: 'Provider returned error' } },
       { ok: false, status: 429 }
-    ),
-    expectedRequestCount: 1
-  },
-  {
-    name: 'both explanation attempts time out',
-    fetchImpl: async () => {
-      throw createTimeoutError();
-    },
-    expectedRequestCount: 2
-  },
-  {
-    name: 'explanation payloads are malformed',
-    fetchImpl: async () => createJsonResponse({
+    ));
+
+  const response = await invokeFraudCheck(app, highRiskPayload);
+
+  assert.equal(response.status, 500);
+  assert.deepEqual(response.body, { error: 'Fraud review failed' });
+});
+
+test('POST /fraud-check returns 500 when OpenRouter returns malformed JSON payload text', async () => {
+  const app = createAppWithFetch(async () => createJsonResponse({
       choices: [
         {
           message: {
-            content: '{"reasons": ["broken json"]'
+            content: '{"status":"Flagged"'
           }
         }
       ]
-    }),
-    expectedRequestCount: 2
-  },
-  {
-    name: 'explanation payloads fail validation',
-    fetchImpl: async () => createExplanationResponse([]),
-    expectedRequestCount: 2
-  }
-];
+    }));
 
-for (const scenario of nonFatalFallbackScenarios) {
-  test(`POST /fraud-check returns a deterministic result when ${scenario.name}`, async () => {
-    let requestCount = 0;
-    const app = createAppWithFetch(async (...args) => {
-      requestCount += 1;
-      return await scenario.fetchImpl(...args);
-    });
+  const response = await invokeFraudCheck(app, highRiskPayload);
 
-    const response = await invokeFraudCheck(app, highRiskPayload);
-
-    assertDeterministicHighRiskResponse(response);
-    assert.equal(requestCount, scenario.expectedRequestCount);
-  });
-}
-
-test('merchant risk scoring is monotonic from low to medium to high', async () => {
-  const app = createAppWithFetch(async () => createExplanationResponse([
-      'amount is far above the account\'s usual range',
-      'transaction location differs from the usual location',
-      'transaction originated from a new device',
-      'merchant category carries additional risk'
-    ]));
-
-  const lowRiskResponse = await invokeFraudCheck(app, {
-    ...merchantRiskPayload,
-    merchantRisk: 'low'
-  });
-  const mediumRiskResponse = await invokeFraudCheck(app, {
-    ...merchantRiskPayload,
-    merchantRisk: 'medium'
-  });
-  const highRiskResponse = await invokeFraudCheck(app, {
-    ...merchantRiskPayload,
-    merchantRisk: 'high'
-  });
-
-  assert.equal(lowRiskResponse.body.riskScore, 79);
-  assert.equal(mediumRiskResponse.body.riskScore, 85);
-  assert.equal(highRiskResponse.body.riskScore, 93);
-  assert.ok(highRiskResponse.body.riskScore >= mediumRiskResponse.body.riskScore);
-  assert.ok(mediumRiskResponse.body.riskScore >= lowRiskResponse.body.riskScore);
+  assert.equal(response.status, 500);
+  assert.deepEqual(response.body, { error: 'Fraud review failed' });
 });
 
-test('POST /fraud-check keeps threshold behavior around 54 and 55', async () => {
-  const evaluateFraud = createFraudEvaluator({
-    fetchImpl: async (_url, options) => {
-      const requestBody = JSON.parse(options.body);
-      const explanationInput = JSON.parse(requestBody.messages[1].content);
-      return createExplanationResponse(explanationInput.signals);
-    },
-    env: {
-      OPENROUTER_API_KEY: 'test-key',
-      OPENROUTER_MODEL: 'openrouter/free',
-      OPENROUTER_TIMEOUT_MS: '15000'
-    }
-  });
+test('POST /fraud-check returns 500 when OpenRouter JSON fails schema validation', async () => {
+  const app = createAppWithFetch(async () => createDecisionResponse({
+      status: 'Flagged',
+      riskScore: 90,
+      flagged: true
+    }));
 
-  const score54 = await evaluateFraud({
-    accountId: 'ACC-54',
-    amount: 200,
-    usualAmount: 200,
-    location: 'denver',
-    usualLocation: 'dayton',
-    velocity: 4,
-    merchantRisk: 'high',
-    newDevice: false,
-    newPayee: false
-  });
+  const response = await invokeFraudCheck(app, highRiskPayload);
 
-  const score55 = await evaluateFraud({
-    accountId: 'ACC-55',
-    amount: 400,
-    usualAmount: 200,
-    location: 'dayton',
-    usualLocation: 'dayton',
-    velocity: 2,
-    merchantRisk: 'high',
-    newDevice: true,
-    newPayee: false
-  });
+  assert.equal(response.status, 500);
+  assert.deepEqual(response.body, { error: 'Fraud review failed' });
+});
 
-  assert.deepEqual(score54, {
-    status: 'Not Flagged',
-    score: 54,
-    flagged: false,
-    reasons: [
-      'transaction location differs from the usual location',
-      'merchant category is marked as high risk',
-      'elevated transaction velocity in the last 24 hours'
-    ]
-  });
-  assert.deepEqual(score55, {
-    status: 'Flagged',
-    score: 55,
-    flagged: true,
-    reasons: [
-      'amount is above the account\'s usual range',
-      'merchant category is marked as high risk',
-      'transaction originated from a new device'
-    ]
-  });
+test('POST /fraud-check returns 500 when flagged is inconsistent with riskScore threshold', async () => {
+  const app = createAppWithFetch(async () => createDecisionResponse({
+      status: 'Not Flagged',
+      riskScore: 88,
+      flagged: false,
+      reasons: ['output is inconsistent by design for this test']
+    }));
+
+  const response = await invokeFraudCheck(app, highRiskPayload);
+
+  assert.equal(response.status, 500);
+  assert.deepEqual(response.body, { error: 'Fraud review failed' });
 });

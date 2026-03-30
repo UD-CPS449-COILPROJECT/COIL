@@ -4,7 +4,7 @@ Team 2's Repository for the UDayton CPS449 COIL project
 
 ## Backend Fraud Review
 
-The backend `POST /fraud-check` endpoint now uses deterministic backend scoring for the final fraud decision and OpenRouter for human-readable explanations when available.
+The backend `POST /fraud-check` endpoint is now LLM-powered via OpenRouter.
 
 Setup with Docker Compose:
 
@@ -23,7 +23,7 @@ Optional environment variables:
 - `OPENROUTER_MODEL` defaults to `openrouter/free`
 - `OPENROUTER_TIMEOUT_MS` defaults to `15000`
 
-The success response shape is unchanged:
+The backend sends the fraud-check payload to the LLM with fraud-analysis context and requires the model to return strict JSON:
 
 ```json
 {
@@ -37,9 +37,7 @@ The success response shape is unchanged:
 }
 ```
 
-If OpenRouter is rate-limited, times out, or returns unusable output, the backend falls back to deterministic backend reasons and still returns a normal fraud-check response.
-
-The backend returns HTTP 500 for configuration or unrecoverable server errors, for example:
+If the model output cannot be parsed, does not match schema, or the provider fails, the backend returns HTTP 500:
 
 ```json
 {
