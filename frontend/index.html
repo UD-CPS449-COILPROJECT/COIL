@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./src/styles.css">
 </head>
 <body>
   <header class="top-nav">
@@ -96,7 +96,9 @@
   </main>
 
   <script src="./config.js"></script>
-  <script>
+  <script type="module">
+    import { ApiError, ValidationError, createApiClient } from './src/api.js';
+
     // Smooth-scroll placeholder for future nav sections.
     document.querySelectorAll('a[href="#"]').forEach((link) => {
       link.addEventListener('click', (event) => {
@@ -110,85 +112,72 @@
     const statusEl = document.getElementById('status');
     const riskScoreEl = document.getElementById('riskScore');
     const reasonEl = document.getElementById('reason');
+    const api = createApiClient();
 
-    function resolveFraudCheckEndpoint() {
-      const configuredBackendUrl = window.__APP_CONFIG__?.backendUrl?.trim();
-
-      if (!configuredBackendUrl) {
-        return '/fraud-check';
-      }
-
-      if (/^https?:\/\//i.test(configuredBackendUrl)) {
-        return configuredBackendUrl.replace(/\/+$/, '') + '/fraud-check';
-      }
-
-      // Service-style host:port from compose (backend:8080) should map to the same
-      // host that served the page, but keep the mapped backend port.
-      const serviceAddress = configuredBackendUrl.match(/^([^:/]+):(\d+)$/);
-      if (serviceAddress) {
-        return `${window.location.protocol}//${window.location.hostname}:${serviceAddress[2]}/fraud-check`;
-      }
-
-      if (configuredBackendUrl === '/fraud-check') {
-        return '/fraud-check';
-      }
-
-      return configuredBackendUrl.replace(/\/+$/, '') + '/fraud-check';
-    }
-
-    // POSTs form data to backend microservice and renders the returned score.
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-
-      const payload = {
-        accountId: document.getElementById('accountId').value.trim(),
-        amount: Number(document.getElementById('amount').value),
-        usualAmount: Number(document.getElementById('usualAmount').value),
-        location: document.getElementById('location').value.trim(),
-        usualLocation: document.getElementById('usualLocation').value.trim(),
-        velocity: Number(document.getElementById('velocity').value),
-        merchantRisk: document.getElementById('merchantRisk').value,
-        newDevice: document.getElementById('newDevice').checked,
-        newPayee: document.getElementById('newPayee').checked,
-      // API key removed — handled securely by backend.
-      };
-
+    function setPendingState() {
       resultBox.classList.remove('safe', 'flagged');
       resultBox.classList.add('neutral');
       statusEl.textContent = 'Analyzing...';
       riskScoreEl.textContent = '...';
       reasonEl.textContent = 'Calling backend fraud-check endpoint.';
+    }
+
+    function setErrorState(message) {
+      resultBox.classList.remove('safe', 'flagged');
+      resultBox.classList.add('neutral');
+      statusEl.textContent = 'Error';
+      riskScoreEl.textContent = '0';
+      reasonEl.textContent = message;
+    }
+
+    function setSuccessState({ status, riskScore, reasons = [], flagged }) {
+      const safeReasons = reasons.length
+        ? `Key signals: ${reasons.join('; ')}.`
+        : 'Low-risk profile based on provided inputs.';
+
+      resultBox.classList.remove('neutral', 'safe', 'flagged');
+      resultBox.classList.add(flagged ? 'flagged' : 'safe');
+      statusEl.textContent = status || (flagged ? 'Flagged' : 'Not Flagged');
+      riskScoreEl.textContent = String(Number.isFinite(riskScore) ? riskScore : 0);
+      reasonEl.textContent = safeReasons;
+    }
+
+    function getFraudFormPayload() {
+      // Keep DOM reads isolated so the API client stays decoupled from page markup.
+      return {
+        accountId: document.getElementById('accountId').value.trim(),
+        amount: document.getElementById('amount').value,
+        usualAmount: document.getElementById('usualAmount').value,
+        location: document.getElementById('location').value.trim(),
+        usualLocation: document.getElementById('usualLocation').value.trim(),
+        velocity: document.getElementById('velocity').value,
+        merchantRisk: document.getElementById('merchantRisk').value,
+        newDevice: document.getElementById('newDevice').checked,
+        newPayee: document.getElementById('newPayee').checked,
+      };
+    }
+
+    // Submit form data through the shared API client and render the returned score.
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setPendingState();
 
       try {
-        const response = await fetch(resolveFraudCheckEndpoint(), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        const payloadResponse = await response.json().catch(() => {
-          throw new Error('Unable to parse response from fraud-check service.');
-        });
-
-        if (!response.ok) {
-          throw new Error(payloadResponse.error || payloadResponse.message || 'Fraud check request failed.');
+        const result = await api.checkFraud(getFraudFormPayload());
+        setSuccessState(result);
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          setErrorState(error.details.join('; ') || error.message);
+          return;
         }
 
-        const { status, riskScore, reasons = [], flagged } = payloadResponse;
-        const safeReasons = reasons.length ? `Key signals: ${reasons.join('; ')}.` : 'Low-risk profile based on provided inputs.';
-        const isFlagged = typeof flagged === 'boolean' ? flagged : Number(riskScore) >= 55;
+        if (error instanceof ApiError) {
+          const detailMessage = error.details.length > 0 ? ` ${error.details.join('; ')}` : '';
+          setErrorState(`${error.message}${detailMessage}`.trim());
+          return;
+        }
 
-        resultBox.classList.remove('neutral', 'safe', 'flagged');
-        resultBox.classList.add(isFlagged ? 'flagged' : 'safe');
-        statusEl.textContent = status || (isFlagged ? 'Flagged' : 'Not Flagged');
-        riskScoreEl.textContent = String(riskScore ?? 0);
-        reasonEl.textContent = safeReasons;
-      } catch (error) {
-        resultBox.classList.remove('safe', 'flagged');
-        resultBox.classList.add('neutral');
-        statusEl.textContent = 'Error';
-        riskScoreEl.textContent = '0';
-        reasonEl.textContent = error.message || 'Could not reach fraud-check service.';
+        setErrorState(error.message || 'Could not reach fraud-check service.');
       }
     });
   </script>
