@@ -19,6 +19,11 @@ dist/
 # Package files
 *.jar
 
+# Environment files
+.env
+.env.*
+!.env.example
+
 # Maven
 target/
 dist/
@@ -47,4 +52,3 @@ Thumbs.db
 *.flv
 *.mov
 *.wmv
-
