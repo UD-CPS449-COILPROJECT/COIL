@@ -1,10 +1,10 @@
 import express from 'express';
 import cors from 'cors';
-import { evaluateFraud } from './fraud/evaluateFraud.js';
+import { evaluateFraud as defaultEvaluateFraud } from './fraud/evaluateFraud.js';
 import { validateFraudPayload } from './fraud/validateFraudPayload.js';
 
 // Creates the Express application with all service routes and middleware.
-export function createApp() {
+export function createApp({ evaluateFraud = defaultEvaluateFraud } = {}) {
   const app = express();
 
   // Keep request parsing and CORS consistent for browser-hosted frontend callers.
@@ -45,7 +45,7 @@ export function createApp() {
     });
   });
 
-  app.post('/fraud-check', (req, res) => {
+  app.post('/fraud-check', async (req, res) => {
     const payload = req.body || {};
     const errors = validateFraudPayload(payload);
 
@@ -56,15 +56,20 @@ export function createApp() {
       });
     }
 
-    const result = evaluateFraud(payload);
+    try {
+      const result = await evaluateFraud(payload);
 
-    // Keep response keys aligned with the frontend renderer.
-    res.json({
-      status: result.status,
-      riskScore: result.score,
-      flagged: result.flagged,
-      reasons: result.reasons
-    });
+      // Keep response keys aligned with the frontend renderer.
+      return res.json({
+        status: result.status,
+        riskScore: result.score,
+        flagged: result.flagged,
+        reasons: result.reasons
+      });
+    } catch (error) {
+      console.error('Fraud review failed', error);
+      return res.status(500).json({ error: 'Fraud review failed' });
+    }
   });
 
   return app;

@@ -13,10 +13,11 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "node index.js",
+    "test": "node --test",
     "start": "node index.js"
   },
   "dependencies": {
+    "ajv": "^8.18.0",
     "cors": "^2.8.6",
     "express": "^5.2.1"
   }
