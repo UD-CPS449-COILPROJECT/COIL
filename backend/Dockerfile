@@ -1,4 +1,4 @@
-FROM node:22-alpine
+FROM node:22.22-alpine3.23
 
 WORKDIR /app
 
@@ -9,6 +9,5 @@ RUN npm ci --no-audit --no-fund
 # Copy app source
 COPY . .
 
-RUN echo "Creating a docker image by mooreb26@udayton.edu"
 EXPOSE 8080
 CMD ["npm", "start"]
