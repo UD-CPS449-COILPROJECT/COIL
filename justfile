@@ -37,25 +37,6 @@ build target="all": deps
     esac
 
 
-# Deploy the project
-deploy target="all":
-    #!/usr/bin/env bash
-    just build "{{target}}"
-    case "{{target}}" in
-        "frontend"|"backend")
-            docker push {{docker_repo}}:{{target}}
-            ;;
-        "all")
-            docker push {{docker_repo}}:frontend
-            docker push {{docker_repo}}:backend
-            ;;
-        *)
-            echo "Invalid target: {{target}}. Use 'frontend', 'backend', or 'all'."
-            exit 1
-            ;;
-    esac
-
-
 # Install dependencies
 deps:
     (cd backend && npm install --no-fund)
