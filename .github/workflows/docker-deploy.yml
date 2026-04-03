@@ -19,15 +19,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - service: frontend
-            context: ./frontend
-            dockerfile: ./frontend/Dockerfile
-            stable_tag: frontend
-          - service: backend
-            context: ./backend
-            dockerfile: ./backend/Dockerfile
-            stable_tag: backend
+        service:
+          - frontend
+          - backend
 
     steps:
       - name: Check out repository
@@ -45,13 +39,14 @@ jobs:
       - name: Build and push ${{ matrix.service }} image
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.dockerfile }}
+          # Each service directory contains its own Dockerfile.
+          context: ./${{ matrix.service }}
+          file: ./${{ matrix.service }}/Dockerfile
           push: true
           # Keep the existing service tags for deployment targets, and
           # publish a release-specific tag for traceability and rollback.
           tags: |
-            ${{ env.DOCKER_REPO }}:${{ matrix.stable_tag }}
-            ${{ env.DOCKER_REPO }}:${{ matrix.stable_tag }}-${{ github.ref_name }}
+            ${{ env.DOCKER_REPO }}:${{ matrix.service }}
+            ${{ env.DOCKER_REPO }}:${{ matrix.service }}-${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
