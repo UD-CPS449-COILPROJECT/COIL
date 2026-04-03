@@ -14,11 +14,11 @@ Before using the workflow, configure these repository secrets:
 Release flow:
 
 1. Commit and merge the release-ready code.
-2. Create a tag such as `v1.0.0`.
-3. Push the tag with `git push origin v1.0.0`.
+2. Create a tag such as `1.0.0`.
+3. Push the tag with `git push origin 1.0.0`.
 4. GitHub Actions builds and pushes `bambam955/coil-team2:frontend`,
    `bambam955/coil-team2:backend`, and tag-specific images such as
-   `bambam955/coil-team2:frontend-v1.0.0` and `bambam955/coil-team2:backend-v1.0.0`.
+   `bambam955/coil-team2:frontend-1.0.0` and `bambam955/coil-team2:backend-1.0.0`.
 
 ## Local Image Builds
 
