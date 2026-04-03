@@ -6,7 +6,7 @@ Docker image publishing is handled by GitHub Actions when a new Git tag is pushe
 The workflow lives at `.github/workflows/docker-deploy.yml` and only runs for newly created tags,
 so normal branch pushes do not publish release images.
 
-Before using the workflow, configure these repository secrets:
+Before using the workflow, configure these GitHub environment secrets in `Production`:
 
 - `DOCKERHUB_USERNAME`
 - `DOCKERHUB_TOKEN`
@@ -19,6 +19,8 @@ Release flow:
 4. GitHub Actions builds and pushes `bambam955/coil-team2:frontend`,
    `bambam955/coil-team2:backend`, and tag-specific images such as
    `bambam955/coil-team2:frontend-1.0.0` and `bambam955/coil-team2:backend-1.0.0`.
+5. GitHub runs the workflow in the `Production` environment, so any required protection rules or
+   approvals for that environment apply before the image push completes.
 
 ## Local Image Builds
 
