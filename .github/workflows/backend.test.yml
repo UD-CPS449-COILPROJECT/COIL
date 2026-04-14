@@ -33,5 +33,19 @@ jobs:
       - name: Install backend dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Run backend tests
-        run: npm test
+      - name: Run backend coverage
+        run: |
+          set +e
+          npm run coverage | tee "$RUNNER_TEMP/backend-coverage.txt"
+          coverage_status=${PIPESTATUS[0]}
+          set -e
+
+          # Surface the built-in Node coverage table directly in the Actions job summary.
+          {
+            echo "## Backend coverage"
+            echo '```text'
+            sed -n '/# start of coverage report/,/# end of coverage report/p' "$RUNNER_TEMP/backend-coverage.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit "$coverage_status"
