@@ -4,7 +4,6 @@ import { createApp } from '../src/app.js';
 import { createFraudEvaluator } from '../src/fraud/evaluateFraud.js';
 
 const highRiskPayload = {
-  accountId: 'ACC-2026-001',
   amount: 5000,
   usualAmount: 250,
   location: 'New York, US',
@@ -127,7 +126,6 @@ test('POST /fraud-check uses OpenRouter decision output when schema-valid', asyn
   assert.equal(capturedRequest.model, 'openrouter/free');
   assert.equal(capturedRequest.response_format.type, 'json_schema');
   assert.deepEqual(capturedRequest.response_format.json_schema.schema.required, ['status', 'riskScore', 'flagged', 'reasons']);
-  assert.equal(capturedRequest.messages[1].content.includes('ACC-2026-001'), true);
   assert.equal(capturedRequest.messages[1].content.includes('5000'), true);
 });
 

@@ -2,7 +2,6 @@
 export function validateFraudPayload(payload) {
   const errors = [];
   const requiredFields = [
-    'accountId',
     'amount',
     'usualAmount',
     'location',

@@ -50,7 +50,6 @@ function toBoolean(value) {
 
 function normalizeFraudPayload(payload) {
   return {
-    accountId: String(payload.accountId || '').trim(),
     amount: Number(payload.amount),
     usualAmount: Number(payload.usualAmount),
     location: String(payload.location || '').trim(),

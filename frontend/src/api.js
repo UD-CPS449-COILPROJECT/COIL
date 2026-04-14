@@ -109,7 +109,6 @@ function validateFraudInput(input) {
   // Preserve the original string form for "required" checks so empty inputs do
   // not get collapsed into numeric validation errors only.
   const rawPayload = {
-    accountId: normalizeRequiredString(input?.accountId),
     amount: normalizeRequiredString(input?.amount),
     usualAmount: normalizeRequiredString(input?.usualAmount),
     location: normalizeRequiredString(input?.location),
@@ -119,7 +118,6 @@ function validateFraudInput(input) {
   };
 
   const normalizedPayload = {
-    accountId: rawPayload.accountId,
     // Coerce numbers and booleans once here so downstream callers always send
     // the backend the same shape regardless of how the form values were read.
     amount: normalizeNumber(input?.amount),
