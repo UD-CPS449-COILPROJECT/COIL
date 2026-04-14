@@ -4,13 +4,10 @@ on:
   pull_request:
     paths:
       - "backend/**"
-      - ".github/workflows/backend-tests.yml"
+      - ".github/workflows/**"
   push:
     branches:
       - main
-    paths:
-      - "backend/**"
-      - ".github/workflows/backend-tests.yml"
 
 permissions:
   contents: read
@@ -25,11 +22,9 @@ jobs:
         working-directory: backend
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           # Keep CI aligned with the local mise config and backend Docker image.
           node-version: 22
