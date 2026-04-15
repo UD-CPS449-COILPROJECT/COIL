@@ -11,6 +11,8 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
+  checks: write
 
 jobs:
   test:
@@ -33,5 +35,16 @@ jobs:
       - name: Install backend dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Run backend tests
-        run: npm test
+      - name: Run backend coverage
+        run: npm run coverage:report
+
+      - name: Comment backend coverage
+        if: always() && github.event_name == 'pull_request'
+        uses: ArtiomTr/jest-coverage-report-action@v2
+        with:
+          working-directory: backend
+          skip-step: all
+          coverage-file: report.json
+          base-coverage-file: report.json
+          custom-title: Backend coverage
+          annotations: coverage
