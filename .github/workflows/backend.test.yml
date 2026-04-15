@@ -11,6 +11,8 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
+  checks: write
 
 jobs:
   test:
@@ -34,18 +36,15 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Run backend coverage
-        run: |
-          set +e
-          npm run coverage | tee "$RUNNER_TEMP/backend-coverage.txt"
-          coverage_status=${PIPESTATUS[0]}
-          set -e
+        run: npm run coverage:report
 
-          # Surface the built-in Node coverage table directly in the Actions job summary.
-          {
-            echo "## Backend coverage"
-            echo '```text'
-            sed -n '/# start of coverage report/,/# end of coverage report/p' "$RUNNER_TEMP/backend-coverage.txt"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          exit "$coverage_status"
+      - name: Comment backend coverage
+        if: always() && github.event_name == 'pull_request'
+        uses: ArtiomTr/jest-coverage-report-action@v2
+        with:
+          working-directory: backend
+          skip-step: all
+          coverage-file: report.json
+          base-coverage-file: report.json
+          custom-title: Backend coverage
+          annotations: coverage

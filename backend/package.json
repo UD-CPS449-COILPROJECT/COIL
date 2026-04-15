@@ -13,13 +13,17 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "node --test",
-    "coverage": "node --test --experimental-test-coverage --test-coverage-include=src/**/*.js --test-coverage-exclude=test/**/*.js --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+    "coverage:report": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --ci --json --testLocationInResults --outputFile=report.json",
     "start": "node index.js"
   },
   "dependencies": {
     "ajv": "^8.18.0",
     "cors": "^2.8.6",
     "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0"
   }
 }
