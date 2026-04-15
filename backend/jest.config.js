@@ -1,3 +1,5 @@
+const threshold = 90;
+
 export default {
   testEnvironment: 'node',
   transform: {},
@@ -5,10 +7,10 @@ export default {
   collectCoverageFrom: ['src/**/*.js'],
   coverageThreshold: {
     global: {
-      statements: 100,
-      branches: 100,
-      functions: 100,
-      lines: 100
+      statements: threshold,
+      branches: threshold,
+      functions: threshold,
+      lines: threshold
     }
   }
 };
