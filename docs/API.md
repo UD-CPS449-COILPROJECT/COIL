@@ -129,6 +129,60 @@ Optional fields:
 - `newDevice`
 - `newPayee`
 
+Field reference:
+
+- `amount`
+  Current transaction amount to evaluate.
+  Type: number or numeric string
+  Required: yes
+  Example: `5000` or `"5000"`
+  Rules: must be greater than `0`
+- `usualAmount`
+  Typical amount for this user or account, used as the baseline for comparison.
+  Type: number or numeric string
+  Required: yes
+  Example: `250` or `"250"`
+  Rules: must be greater than `0`
+- `location`
+  Current transaction location as free-form text.
+  Type: string
+  Required: yes
+  Example: `"New York, US"`
+  Rules: cannot be blank; leading and trailing whitespace is trimmed before evaluation
+- `usualLocation`
+  The user's normal or historical location, used to detect location mismatch.
+  Type: string
+  Required: yes
+  Example: `"Dayton, US"`
+  Rules: cannot be blank; leading and trailing whitespace is trimmed before evaluation
+- `velocity`
+  Count of recent related transactions or a similar velocity signal for the current event.
+  Type: number or numeric string
+  Required: yes
+  Example: `6` or `"6"`
+  Rules: must be greater than or equal to `0`
+- `merchantRisk`
+  Merchant risk category supplied by the caller.
+  Type: string
+  Required: yes
+  Example: `"high"`
+  Accepted values: `low`, `medium`, `high`
+  Rules: comparison is case-insensitive because the backend lowercases the value before evaluation
+- `newDevice`
+  Indicates whether the transaction came from a device the user has not used before.
+  Type: boolean or supported boolean-like string
+  Required: no
+  Example: `true`, `"true"`, or `"1"`
+  Default if omitted: `false`
+  Rules: only `true`, `"true"`, and `"1"` are treated as true; all other values become false
+- `newPayee`
+  Indicates whether the transaction targets a payee the user has not interacted with before.
+  Type: boolean or supported boolean-like string
+  Required: no
+  Example: `false`, `"true"`, or `"1"`
+  Default if omitted: `false`
+  Rules: only `true`, `"true"`, and `"1"` are treated as true; all other values become false
+
 Validation rules:
 
 - `amount` must be numeric and greater than `0`.
@@ -139,6 +193,30 @@ Validation rules:
 - `merchantRisk` is normalized to lowercase before evaluation.
 - `newDevice` and `newPayee` are optional booleans.
 - The backend also treats the string values `"true"` and `"1"` as `true` for `newDevice` and `newPayee`.
+
+Normalized transaction shape:
+
+Before the backend sends the request to the fraud evaluator, it normalizes the payload to this shape:
+
+```json
+{
+  "amount": 5000,
+  "usualAmount": 250,
+  "location": "New York, US",
+  "usualLocation": "Dayton, US",
+  "velocity": 6,
+  "merchantRisk": "high",
+  "newDevice": true,
+  "newPayee": false
+}
+```
+
+Normalization behavior:
+
+- Numeric fields are converted with `Number(...)`.
+- `location` and `usualLocation` are converted to strings and trimmed.
+- `merchantRisk` is converted to lowercase and trimmed.
+- If `newDevice` or `newPayee` is omitted, the backend sends `false`.
 
 Successful response:
 
