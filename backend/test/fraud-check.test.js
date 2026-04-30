@@ -8,7 +8,7 @@ const highRiskPayload = {
   location: 'New York, US',
   usualLocation: 'Dayton, US',
   velocity: 6,
-  merchantRisk: 'high',
+  merchantName: 'Costco Wholesale',
   newDevice: true,
   newPayee: false
 };
@@ -230,7 +230,8 @@ test('POST /fraud-check sends a strict additive fraud-scoring rubric to OpenRout
 
   assert.equal(response.status, 200);
   assert.ok(capturedRequest.messages[0].content.includes('Use a strict additive rubric'));
-  assert.ok(capturedRequest.messages[0].content.includes('absolute amount, amount relative to usualAmount, location relative to usualLocation, velocity, merchantRisk, newDevice, newPayee'));
+  assert.ok(capturedRequest.messages[0].content.includes('absolute amount, amount relative to usualAmount, location relative to usualLocation, velocity, merchantContext, newDevice, newPayee'));
+  assert.ok(capturedRequest.messages[0].content.includes('merchantContext as advisory merchant evidence'));
   assert.ok(capturedRequest.messages[0].content.includes('Treat absolute amount as the highest-priority standalone signal'));
   assert.ok(capturedRequest.messages[0].content.includes('Do not double count the same signal'));
   assert.equal(capturedRequest.temperature, 0);
@@ -263,7 +264,7 @@ test('POST /fraud-check normalizes text payload values before review', async () 
     location: ' New York, US ',
     usualLocation: ' Dayton, US ',
     velocity: '6',
-    merchantRisk: 'HIGH',
+    merchantName: ' Costco Wholesale ',
     newDevice: '1',
     newPayee: 'true'
   });
@@ -275,7 +276,7 @@ test('POST /fraud-check normalizes text payload values before review', async () 
     location: 'New York, US',
     usualLocation: 'Dayton, US',
     velocity: 6,
-    merchantRisk: 'high',
+    merchantName: 'Costco Wholesale',
     newDevice: true,
     newPayee: true
   });
@@ -303,7 +304,10 @@ test('fraud evaluator falls back for omitted optional-normalized fields', async 
   const result = await evaluateFraud({
     amount: 25,
     usualAmount: 40,
-    velocity: 0
+    location: 'Dallas, US',
+    usualLocation: 'Dallas, US',
+    velocity: 0,
+    merchantName: 'Unknown Merchant'
   });
 
   assert.deepEqual(result, {
@@ -315,10 +319,10 @@ test('fraud evaluator falls back for omitted optional-normalized fields', async 
   assert.deepEqual(capturedTransaction, {
     amount: 25,
     usualAmount: 40,
-    location: '',
-    usualLocation: '',
+    location: 'Dallas, US',
+    usualLocation: 'Dallas, US',
     velocity: 0,
-    merchantRisk: 'low',
+    merchantName: 'Unknown Merchant',
     newDevice: false,
     newPayee: false
   });
@@ -413,13 +417,11 @@ test('POST /fraud-check returns 400 for invalid request payloads', async () => {
   const response = await invokeFraudCheck(app, {
     ...highRiskPayload,
     amount: 0,
-    merchantRisk: 'extreme'
   });
 
   assert.equal(response.status, 400);
   assert.equal(response.body.error, 'Invalid fraud-check input');
-  assert.ok(response.body.details.includes('amount must be a number greater than 0'));
-  assert.ok(response.body.details.includes('merchantRisk must be one of low, medium, high'));
+  assert.deepEqual(response.body.details, ['amount must be a number greater than 0']);
 });
 
 test('POST /fraud-check returns 400 when request body is missing', async () => {
@@ -433,7 +435,23 @@ test('POST /fraud-check returns 400 when request body is missing', async () => {
 
   assert.equal(response.status, 400);
   assert.ok(response.body.details.includes('amount is required'));
-  assert.ok(response.body.details.includes('merchantRisk is required'));
+  assert.ok(response.body.details.includes('merchantName is required'));
+});
+
+test('POST /fraud-check returns 400 when merchantName is blank', async () => {
+  const app = createApp({
+    evaluateFraud: async () => {
+      throw new Error('should not be called');
+    }
+  });
+
+  const response = await invokeFraudCheck(app, {
+    ...highRiskPayload,
+    merchantName: '   '
+  });
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(response.body.details, ['merchantName is required']);
 });
 
 test('POST /fraud-check returns all validation errors for missing numeric fields', async () => {
@@ -449,7 +467,7 @@ test('POST /fraud-check returns all validation errors for missing numeric fields
     location: '',
     usualLocation: undefined,
     velocity: -1,
-    merchantRisk: 'medium'
+    merchantName: 'Costco Wholesale'
   });
 
   assert.equal(response.status, 400);
@@ -477,16 +495,14 @@ test('POST /fraud-check returns numeric validation errors for non-numeric values
     location: 'Dayton, US',
     usualLocation: 'Dayton, US',
     velocity: 'not-a-number',
-    merchantRisk: undefined
+    merchantName: 'Costco Wholesale'
   });
 
   assert.equal(response.status, 400);
   assert.deepEqual(response.body.details, [
-    'merchantRisk is required',
     'amount must be a number greater than 0',
     'usualAmount must be a number greater than 0',
     'velocity must be a number greater than or equal to 0',
-    'merchantRisk must be one of low, medium, high'
   ]);
 });
 

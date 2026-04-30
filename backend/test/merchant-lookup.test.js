@@ -268,7 +268,6 @@ test('fraud evaluator adds merchant lookup context when merchantName is provided
     location: 'Dallas, US',
     usualLocation: 'Dallas, US',
     velocity: 0,
-    merchantRisk: 'low',
     merchantName: ' Trusted Merchant LLC '
   });
 
@@ -284,7 +283,6 @@ test('fraud evaluator adds merchant lookup context when merchantName is provided
     location: 'Dallas, US',
     usualLocation: 'Dallas, US',
     velocity: 0,
-    merchantRisk: 'low',
     newDevice: false,
     newPayee: false,
     merchantName: 'Trusted Merchant LLC'
