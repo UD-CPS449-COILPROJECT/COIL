@@ -44,3 +44,5 @@ If the model output cannot be parsed, does not match schema, or the provider fai
   "error": "Fraud review failed"
 }
 ```
+
+The backend also bundles read-only merchant whitelist and blacklist lookups from versioned JSON data in the repo. Those endpoints live under `/merchants/whitelist/:name` and `/merchants/blacklist/:name`.
