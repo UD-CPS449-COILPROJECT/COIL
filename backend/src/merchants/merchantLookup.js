@@ -7,7 +7,7 @@ function normalizeMerchantName(name) {
     .replace(/\s+/g, ' ');
 }
 
-function normalizeMerchantRecord(record, sourceName, index) {
+export function normalizeMerchantRecord(record, sourceName, index) {
   if (!record || typeof record !== 'object') {
     throw new Error(`Merchant list ${sourceName} entry ${index + 1} must be an object`);
   }
@@ -26,7 +26,7 @@ function normalizeMerchantRecord(record, sourceName, index) {
   return { name, aliases };
 }
 
-function loadMerchantRecords(fileName) {
+export function loadMerchantRecords(fileName) {
   const fileUrl = new URL(fileName, import.meta.url);
   const rawRecords = JSON.parse(readFileSync(fileUrl, 'utf8'));
 

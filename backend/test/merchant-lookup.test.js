@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
+import { unlinkSync, writeFileSync } from 'node:fs';
 import { createApp } from '../src/app.js';
 import { createFraudEvaluator } from '../src/fraud/evaluateFraud.js';
-import { createMerchantLookup } from '../src/merchants/merchantLookup.js';
+import {
+  createMerchantLookup,
+  loadMerchantRecords,
+  normalizeMerchantRecord
+} from '../src/merchants/merchantLookup.js';
 
 function createJsonResponse(body) {
   return {
@@ -59,6 +65,17 @@ async function invokeRoute(app, { method = 'get', path, body, params } = {}) {
   };
 }
 
+function withTempMerchantFile(fileName, contents, callback) {
+  const filePath = fileURLToPath(new URL(`../src/merchants/${fileName}`, import.meta.url));
+  writeFileSync(filePath, contents);
+
+  try {
+    return callback(`./${fileName}`);
+  } finally {
+    unlinkSync(filePath);
+  }
+}
+
 test('merchant lookup indexes canonical names and aliases with normalization', () => {
   const merchantLookup = createMerchantLookup({
     whitelist: [
@@ -88,6 +105,86 @@ test('merchant lookup indexes canonical names and aliases with normalization', (
   assert.deepEqual(merchantLookup.lookupWhitelist('missing merchant'), {
     found: false
   });
+});
+
+test('merchant lookup returns not found for blank names and missing contexts', () => {
+  const merchantLookup = createMerchantLookup({
+    whitelist: [
+      {
+        name: 'Trusted Merchant',
+        aliases: ['Trusted Merchant LLC']
+      }
+    ]
+  });
+
+  assert.deepEqual(merchantLookup.lookupWhitelist('   '), {
+    found: false
+  });
+  assert.equal(merchantLookup.buildFraudReviewContext('   '), null);
+  assert.equal(merchantLookup.buildFraudReviewContext('missing merchant'), null);
+});
+
+test('merchant lookup builds fraud review context for matched merchants', () => {
+  const merchantLookup = createMerchantLookup({
+    whitelist: [
+      {
+        name: 'Trusted Merchant',
+        aliases: ['Trusted Merchant LLC']
+      }
+    ],
+    blacklist: [
+      {
+        name: 'Shady Vendor',
+        aliases: ['Shady Vendor LLC']
+      }
+    ]
+  });
+
+  assert.deepEqual(merchantLookup.buildFraudReviewContext('Trusted Merchant LLC'), {
+    merchantName: 'Trusted Merchant LLC',
+    whitelist: {
+      found: true,
+      name: 'Trusted Merchant',
+      aliases: ['Trusted Merchant LLC']
+    },
+    blacklist: {
+      found: false
+    }
+  });
+});
+
+test('merchant record normalization rejects malformed records', () => {
+  assert.throws(
+    () => normalizeMerchantRecord(null, 'whitelist.json', 0),
+    /must be an object/
+  );
+  assert.throws(
+    () => normalizeMerchantRecord({}, 'whitelist.json', 0),
+    /missing a merchant name/
+  );
+  assert.deepEqual(
+    normalizeMerchantRecord(
+      {
+        name: 'Alias Merchant',
+        aliases: ['  alias one  ', '', null, 'alias two', '   ']
+      },
+      'whitelist.json',
+      0
+    ),
+    {
+      name: 'Alias Merchant',
+      aliases: ['alias one', 'alias two']
+    }
+  );
+});
+
+test('merchant file loading rejects non-array JSON payloads', () => {
+  assert.throws(
+    () => withTempMerchantFile('.merchant-lookup-test-fixture.json', '{"name":"not-an-array"}', (relativeFileName) => {
+      loadMerchantRecords(relativeFileName);
+    }),
+    /must be a JSON array/
+  );
 });
 
 test('GET /merchants/whitelist/:name and GET /merchants/blacklist/:name return lookup responses', async () => {
