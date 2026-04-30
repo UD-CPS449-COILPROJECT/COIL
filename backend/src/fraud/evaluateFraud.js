@@ -1,4 +1,5 @@
 import Ajv from 'ajv';
+import { defaultMerchantLookup } from '../merchants/merchantLookup.js';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_MODEL = 'openrouter/free';
@@ -49,6 +50,8 @@ function toBoolean(value) {
 }
 
 function normalizeFraudPayload(payload) {
+  const merchantName = String(payload.merchantName || '').trim();
+
   return {
     amount: Number(payload.amount),
     usualAmount: Number(payload.usualAmount),
@@ -57,7 +60,8 @@ function normalizeFraudPayload(payload) {
     velocity: Number(payload.velocity),
     merchantRisk: String(payload.merchantRisk || 'low').trim().toLowerCase(),
     newDevice: toBoolean(payload.newDevice),
-    newPayee: toBoolean(payload.newPayee)
+    newPayee: toBoolean(payload.newPayee),
+    ...(merchantName ? { merchantName } : {})
   };
 }
 
@@ -78,6 +82,7 @@ function buildSystemPrompt() {
     'Compare location to usualLocation and add risk when the transaction occurs in a meaningfully different place.',
     'Use velocity as an additive signal where higher velocity increases risk.',
     'Treat merchantRisk as additive, with high above medium above low.',
+    'If merchantContext is present, use exact-match whitelist and blacklist results as additional evidence and do not broaden the match beyond the normalized merchant name.',
     'Treat newDevice and newPayee as separate additive signals that each increase risk when true.',
     'Do not double count the same signal.',
     'Return only JSON that matches the required schema.',
@@ -89,7 +94,16 @@ function buildSystemPrompt() {
   ].join('\n');
 }
 
-function buildRequestBody(payload, model) {
+function buildRequestBody(payload, model, merchantLookup) {
+  const requestPayload = { transaction: payload };
+
+  if (payload.merchantName && merchantLookup?.buildFraudReviewContext) {
+    const merchantContext = merchantLookup.buildFraudReviewContext(payload.merchantName);
+    if (merchantContext) {
+      requestPayload.merchantContext = merchantContext;
+    }
+  }
+
   return {
     model,
     // Keep generation as deterministic as possible for a score-oriented endpoint.
@@ -110,7 +124,7 @@ function buildRequestBody(payload, model) {
       },
       {
         role: 'user',
-        content: JSON.stringify({ transaction: payload }, null, 2)
+        content: JSON.stringify(requestPayload, null, 2)
       }
     ]
   };
@@ -213,14 +227,22 @@ async function sendOpenRouterRequest(fetchImpl, env, requestBody) {
   return completion;
 }
 
-export function createFraudEvaluator({ fetchImpl = fetch, env = process.env } = {}) {
+export function createFraudEvaluator({
+  fetchImpl = fetch,
+  env = process.env,
+  merchantLookup = defaultMerchantLookup
+} = {}) {
   return async function evaluateFraud(payload) {
     if (!env.OPENROUTER_API_KEY) {
       throw new FraudReviewError('OPENROUTER_API_KEY is required');
     }
 
     const normalizedPayload = normalizeFraudPayload(payload);
-    const requestBody = buildRequestBody(normalizedPayload, env.OPENROUTER_MODEL || DEFAULT_MODEL);
+    const requestBody = buildRequestBody(
+      normalizedPayload,
+      env.OPENROUTER_MODEL || DEFAULT_MODEL,
+      merchantLookup
+    );
     const completion = await sendOpenRouterRequest(fetchImpl, env, requestBody);
     const messageContent = completion?.choices?.[0]?.message?.content;
     const decision = parseChoiceContent(messageContent);

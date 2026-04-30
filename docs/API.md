@@ -96,6 +96,46 @@ Validation error response:
 }
 ```
 
+### `GET /merchants/whitelist/:name`
+
+Looks up a merchant in the versioned whitelist using the backend's normalized exact-match index.
+
+Lookup rules:
+
+- The path parameter is trimmed before lookup.
+- Matching is case-insensitive after normalization.
+- Internal whitespace is collapsed to a single space before lookup.
+- Exact matches return the canonical merchant record and aliases.
+- Non-matches still return `200 OK` with `found: false`.
+
+Successful response:
+
+- Status: `200 OK`
+
+```json
+{
+  "found": true,
+  "name": "Costco Wholesale",
+  "aliases": ["Costco"]
+}
+```
+
+No-match response:
+
+- Status: `200 OK`
+
+```json
+{
+  "found": false
+}
+```
+
+### `GET /merchants/blacklist/:name`
+
+Looks up a merchant in the versioned blacklist using the same normalized exact-match contract as the whitelist route.
+
+Successful and no-match responses use the same shapes as `GET /merchants/whitelist/:name`.
+
 ### `POST /fraud-check`
 
 Sends transaction context to the backend fraud evaluator and returns a structured fraud decision.
@@ -231,4 +271,4 @@ Backend failure response:
 
 - There is no route-level API versioning such as `/api/v1`.
 - The fraud-check response is intentionally normalized before being returned to the frontend.
-- The backend currently exposes exactly four routes: `/`, `/health`, `/analyze`, and `/fraud-check`.
+- The backend currently exposes exactly six routes: `/`, `/health`, `/analyze`, `/merchants/whitelist/:name`, `/merchants/blacklist/:name`, and `/fraud-check`.

@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Costco Wholesale",
+    "aliases": [
+      "Costco"
+    ]
+  },
+  {
+    "name": "Whole Foods Market",
+    "aliases": [
+      "Whole Foods"
+    ]
+  },
+  {
+    "name": "Starbucks Coffee",
+    "aliases": [
+      "Starbucks"
+    ]
+  }
+]

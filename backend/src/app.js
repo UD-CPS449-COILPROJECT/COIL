@@ -1,10 +1,12 @@
 import express from 'express';
 import cors from 'cors';
-import { evaluateFraud as defaultEvaluateFraud } from './fraud/evaluateFraud.js';
+import { createFraudEvaluator } from './fraud/evaluateFraud.js';
 import { validateFraudPayload } from './fraud/validateFraudPayload.js';
+import { defaultMerchantLookup } from './merchants/merchantLookup.js';
 
 // Creates the Express application with all service routes and middleware.
-export function createApp({ evaluateFraud = defaultEvaluateFraud } = {}) {
+export function createApp({ evaluateFraud, merchantLookup = defaultMerchantLookup } = {}) {
+  const fraudEvaluator = evaluateFraud || createFraudEvaluator({ merchantLookup });
   const app = express();
 
   // Keep request parsing and CORS consistent for browser-hosted frontend callers.
@@ -45,6 +47,15 @@ export function createApp({ evaluateFraud = defaultEvaluateFraud } = {}) {
     });
   });
 
+  // These merchant routes are read-only views over the versioned in-repo lookup data.
+  app.get('/merchants/whitelist/:name', (req, res) => {
+    return res.json(merchantLookup.lookupWhitelist(req.params.name));
+  });
+
+  app.get('/merchants/blacklist/:name', (req, res) => {
+    return res.json(merchantLookup.lookupBlacklist(req.params.name));
+  });
+
   app.post('/fraud-check', async (req, res) => {
     const payload = req.body || {};
     const errors = validateFraudPayload(payload);
@@ -57,7 +68,7 @@ export function createApp({ evaluateFraud = defaultEvaluateFraud } = {}) {
     }
 
     try {
-      const result = await evaluateFraud(payload);
+      const result = await fraudEvaluator(payload);
 
       // Keep response keys aligned with the frontend renderer.
       return res.json({
