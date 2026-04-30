@@ -58,7 +58,6 @@ function normalizeFraudPayload(payload) {
     location: String(payload.location || '').trim(),
     usualLocation: String(payload.usualLocation || '').trim(),
     velocity: Number(payload.velocity),
-    merchantRisk: String(payload.merchantRisk || 'low').trim().toLowerCase(),
     newDevice: toBoolean(payload.newDevice),
     newPayee: toBoolean(payload.newPayee),
     ...(merchantName ? { merchantName } : {})
@@ -76,13 +75,13 @@ function buildSystemPrompt() {
     'Assess fraud risk for a single transaction using the provided transaction context.',
     'Use a strict additive rubric so the same input is scored the same way across repeated evaluations.',
     'Score signals independently and do not change the weighting based on narrative wording or tone.',
-    'Priority order: absolute amount, amount relative to usualAmount, location relative to usualLocation, velocity, merchantRisk, newDevice, newPayee.',
+    'Priority order: absolute amount, amount relative to usualAmount, location relative to usualLocation, velocity, merchantContext, newDevice, newPayee.',
     'Treat absolute amount as the highest-priority standalone signal.',
     'Compare amount to usualAmount and add risk when the transaction is materially larger than normal.',
     'Compare location to usualLocation and add risk when the transaction occurs in a meaningfully different place.',
     'Use velocity as an additive signal where higher velocity increases risk.',
-    'Treat merchantRisk as additive, with high above medium above low.',
     'If merchantContext is present, use exact-match whitelist and blacklist results as additional evidence and do not broaden the match beyond the normalized merchant name.',
+    'Treat merchantContext as advisory merchant evidence rather than a fuzzy merchant risk score.',
     'Treat newDevice and newPayee as separate additive signals that each increase risk when true.',
     'Do not double count the same signal.',
     'Return only JSON that matches the required schema.',
@@ -94,14 +93,11 @@ function buildSystemPrompt() {
   ].join('\n');
 }
 
-function buildRequestBody(payload, model, merchantLookup) {
+function buildRequestBody(payload, model, merchantContext) {
   const requestPayload = { transaction: payload };
 
-  if (payload.merchantName && merchantLookup?.buildFraudReviewContext) {
-    const merchantContext = merchantLookup.buildFraudReviewContext(payload.merchantName);
-    if (merchantContext) {
-      requestPayload.merchantContext = merchantContext;
-    }
+  if (merchantContext) {
+    requestPayload.merchantContext = merchantContext;
   }
 
   return {
@@ -238,11 +234,18 @@ export function createFraudEvaluator({
     }
 
     const normalizedPayload = normalizeFraudPayload(payload);
+    // Merchant lookup stays backend-owned so callers only provide the merchant name.
+    let merchantContext = null;
+    if (normalizedPayload.merchantName && merchantLookup?.buildFraudReviewContext) {
+      merchantContext = merchantLookup.buildFraudReviewContext(normalizedPayload.merchantName);
+    }
+
     const requestBody = buildRequestBody(
       normalizedPayload,
       env.OPENROUTER_MODEL || DEFAULT_MODEL,
-      merchantLookup
+      merchantContext
     );
+
     const completion = await sendOpenRouterRequest(fetchImpl, env, requestBody);
     const messageContent = completion?.choices?.[0]?.message?.content;
     const decision = parseChoiceContent(messageContent);

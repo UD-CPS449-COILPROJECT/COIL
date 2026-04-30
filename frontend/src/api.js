@@ -1,6 +1,4 @@
 // Keep all browser-side backend calls behind one small module boundary.
-const MERCHANT_RISK_LEVELS = new Set(['low', 'medium', 'high']);
-
 export class ValidationError extends Error {
   constructor(message, details = []) {
     super(message);
@@ -114,7 +112,8 @@ function validateFraudInput(input) {
     location: normalizeRequiredString(input?.location),
     usualLocation: normalizeRequiredString(input?.usualLocation),
     velocity: normalizeRequiredString(input?.velocity),
-    merchantRisk: normalizeRequiredString(input?.merchantRisk).toLowerCase(),
+    // Merchant identity is required so the backend can do the exact whitelist/blacklist lookup.
+    merchantName: normalizeRequiredString(input?.merchantName),
   };
 
   const normalizedPayload = {
@@ -125,7 +124,7 @@ function validateFraudInput(input) {
     location: rawPayload.location,
     usualLocation: rawPayload.usualLocation,
     velocity: normalizeNumber(input?.velocity),
-    merchantRisk: rawPayload.merchantRisk,
+    merchantName: rawPayload.merchantName,
     newDevice: normalizeBoolean(input?.newDevice),
     newPayee: normalizeBoolean(input?.newPayee),
   };
@@ -148,10 +147,6 @@ function validateFraudInput(input) {
 
   if (!Number.isFinite(normalizedPayload.velocity) || normalizedPayload.velocity < 0) {
     details.push('velocity must be a number greater than or equal to 0');
-  }
-
-  if (!MERCHANT_RISK_LEVELS.has(normalizedPayload.merchantRisk)) {
-    details.push('merchantRisk must be one of low, medium, high');
   }
 
   if (details.length > 0) {

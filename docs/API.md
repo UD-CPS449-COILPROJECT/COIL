@@ -149,7 +149,7 @@ Request body:
   "location": "New York, US",
   "usualLocation": "Dayton, US",
   "velocity": 6,
-  "merchantRisk": "high",
+  "merchantName": "Costco Wholesale",
   "newDevice": true,
   "newPayee": false
 }
@@ -162,7 +162,7 @@ Required fields:
 - `location`
 - `usualLocation`
 - `velocity`
-- `merchantRisk`
+- `merchantName`
 
 Optional fields:
 
@@ -178,7 +178,7 @@ Field reference:
 | `location` | Current transaction location as free-form text. | string | Yes | `"New York, US"` | Cannot be blank; whitespace is trimmed before evaluation. |
 | `usualLocation` | User's normal or historical location, used to detect location mismatch. | string | Yes | `"Dayton, US"` | Cannot be blank; whitespace is trimmed before evaluation. |
 | `velocity` | Count of recent related transactions or a similar velocity signal for the current event. | number or numeric string | Yes | `6` or `"6"` | Must be greater than or equal to `0`. |
-| `merchantRisk` | Merchant risk category supplied by the caller. | string | Yes | `"high"` | Accepted values: `low`, `medium`, `high`; value is lowercased before evaluation. |
+| `merchantName` | Merchant name supplied by the caller for exact-match whitelist and blacklist lookup. | string | Yes | `"Costco Wholesale"` | Whitespace is trimmed before evaluation. |
 | `newDevice` | Whether the transaction came from a device the user has not used before. | boolean or supported boolean-like string | No | `true`, `"true"`, or `"1"` | Defaults to `false`; only `true`, `"true"`, and `"1"` become true. |
 | `newPayee` | Whether the transaction targets a payee the user has not interacted with before. | boolean or supported boolean-like string | No | `false`, `"true"`, or `"1"` | Defaults to `false`; only `true`, `"true"`, and `"1"` become true. |
 
@@ -188,8 +188,8 @@ Validation rules:
 - `usualAmount` must be numeric and greater than `0`.
 - `velocity` must be numeric and greater than or equal to `0`.
 - `location` and `usualLocation` must be present and not blank.
-- `merchantRisk` must be one of `low`, `medium`, or `high`.
-- `merchantRisk` is normalized to lowercase before evaluation.
+- `merchantName` must be present and not blank.
+- `merchantName` is trimmed before evaluation.
 - `newDevice` and `newPayee` are optional booleans.
 - The backend also treats the string values `"true"` and `"1"` as `true` for `newDevice` and `newPayee`.
 
@@ -204,7 +204,7 @@ Before the backend sends the request to the fraud evaluator, it normalizes the p
   "location": "New York, US",
   "usualLocation": "Dayton, US",
   "velocity": 6,
-  "merchantRisk": "high",
+  "merchantName": "Costco Wholesale",
   "newDevice": true,
   "newPayee": false
 }
@@ -214,7 +214,7 @@ Normalization behavior:
 
 - Numeric fields are converted with `Number(...)`.
 - `location` and `usualLocation` are converted to strings and trimmed.
-- `merchantRisk` is converted to lowercase and trimmed.
+- `merchantName` is converted to a trimmed string and used as the merchant lookup key.
 - If `newDevice` or `newPayee` is omitted, the backend sends `false`.
 
 Successful response:
@@ -229,7 +229,7 @@ Successful response:
   "reasons": [
     "transaction amount is much higher than normal behavior",
     "transaction location differs from historical activity",
-    "merchant category has elevated fraud risk",
+    "merchant whitelist/blacklist lookup indicates elevated merchant risk",
     "payment came from a previously unseen device"
   ]
 }
@@ -251,7 +251,7 @@ Validation error response:
   "error": "Invalid fraud-check input",
   "details": [
     "amount must be a number greater than 0",
-    "merchantRisk must be one of low, medium, high"
+    "merchantName is required"
   ]
 }
 ```

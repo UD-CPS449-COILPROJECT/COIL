@@ -7,7 +7,8 @@ export function validateFraudPayload(payload) {
     'location',
     'usualLocation',
     'velocity',
-    'merchantRisk'
+    // Merchant identity is now caller-provided so the backend can own exact-match lookup.
+    'merchantName'
   ];
 
   for (const field of requiredFields) {
@@ -26,11 +27,6 @@ export function validateFraudPayload(payload) {
 
   if (!Number.isFinite(Number(payload.velocity)) || Number(payload.velocity) < 0) {
     errors.push('velocity must be a number greater than or equal to 0');
-  }
-
-  const merchantRisk = String(payload.merchantRisk || '').toLowerCase();
-  if (!['low', 'medium', 'high'].includes(merchantRisk)) {
-    errors.push('merchantRisk must be one of low, medium, high');
   }
 
   return errors;

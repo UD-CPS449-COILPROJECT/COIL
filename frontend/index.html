@@ -54,12 +54,8 @@
           </label>
 
           <label>
-            Merchant Risk Level
-            <select id="merchantRisk">
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
+            Merchant Name
+            <input type="text" id="merchantName" placeholder="Costco Wholesale" required>
           </label>
 
           <div class="check-row">
@@ -145,7 +141,7 @@
         location: document.getElementById('location').value.trim(),
         usualLocation: document.getElementById('usualLocation').value.trim(),
         velocity: document.getElementById('velocity').value,
-        merchantRisk: document.getElementById('merchantRisk').value,
+        merchantName: document.getElementById('merchantName').value.trim(),
         newDevice: document.getElementById('newDevice').checked,
         newPayee: document.getElementById('newPayee').checked,
       };
