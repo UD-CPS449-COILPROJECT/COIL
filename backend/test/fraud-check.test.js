@@ -136,7 +136,7 @@ test('GET / and GET /health return startup responses', async () => {
   const healthResponse = await invokeRoute(app, { path: '/health' });
 
   assert.equal(rootResponse.status, 200);
-  assert.equal(rootResponse.text, 'Microservice Gateway\nVersion: 0.2.0');
+  assert.equal(rootResponse.text, 'Microservice Gateway\nVersion: 0.2.1');
   assert.equal(healthResponse.status, 200);
   assert.deepEqual(healthResponse.body, { status: 'ok', message: 'Backend is running' });
 });

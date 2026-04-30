@@ -15,7 +15,7 @@ export function createApp({ evaluateFraud } = {}) {
   app.use(express.json());
 
   app.get('/', (_req, res) => {
-    res.send('Microservice Gateway\nVersion: 0.2.0');
+    res.send('Microservice Gateway\nVersion: 0.2.1');
   });
 
   app.get('/health', (_req, res) => {
