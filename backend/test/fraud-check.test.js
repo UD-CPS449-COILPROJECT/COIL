@@ -211,6 +211,29 @@ test('POST /fraud-check uses OpenRouter decision output when schema-valid', asyn
   assert.equal(capturedRequest.response_format.type, 'json_schema');
   assert.deepEqual(capturedRequest.response_format.json_schema.schema.required, ['status', 'riskScore', 'flagged', 'reasons']);
   assert.equal(capturedRequest.messages[1].content.includes('5000'), true);
+  assert.equal(capturedRequest.temperature, 0);
+});
+
+test('POST /fraud-check sends a strict additive fraud-scoring rubric to OpenRouter', async () => {
+  let capturedRequest;
+  const app = createAppWithFetch(async (_url, options) => {
+    capturedRequest = JSON.parse(options.body);
+    return createDecisionResponse({
+      status: 'Not Flagged',
+      riskScore: 12,
+      flagged: false,
+      reasons: ['prompt rubric is captured for regression coverage']
+    });
+  });
+
+  const response = await invokeFraudCheck(app, highRiskPayload);
+
+  assert.equal(response.status, 200);
+  assert.ok(capturedRequest.messages[0].content.includes('Use a strict additive rubric'));
+  assert.ok(capturedRequest.messages[0].content.includes('absolute amount, amount relative to usualAmount, location relative to usualLocation, velocity, merchantRisk, newDevice, newPayee'));
+  assert.ok(capturedRequest.messages[0].content.includes('Treat absolute amount as the highest-priority standalone signal'));
+  assert.ok(capturedRequest.messages[0].content.includes('Do not double count the same signal'));
+  assert.equal(capturedRequest.temperature, 0);
 });
 
 test('POST /fraud-check normalizes text payload values before review', async () => {
