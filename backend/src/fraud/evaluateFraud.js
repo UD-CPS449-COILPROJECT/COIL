@@ -94,14 +94,11 @@ function buildSystemPrompt() {
   ].join('\n');
 }
 
-function buildRequestBody(payload, model, merchantLookup) {
+function buildRequestBody(payload, model, merchantContext) {
   const requestPayload = { transaction: payload };
 
-  if (payload.merchantName && merchantLookup?.buildFraudReviewContext) {
-    const merchantContext = merchantLookup.buildFraudReviewContext(payload.merchantName);
-    if (merchantContext) {
-      requestPayload.merchantContext = merchantContext;
-    }
+  if (merchantContext) {
+    requestPayload.merchantContext = merchantContext;
   }
 
   return {
@@ -238,11 +235,17 @@ export function createFraudEvaluator({
     }
 
     const normalizedPayload = normalizeFraudPayload(payload);
+    let merchantContext = null;
+    if (normalizedPayload.merchantName && merchantLookup?.buildFraudReviewContext) {
+      merchantContext = merchantLookup.buildFraudReviewContext(normalizedPayload.merchantName);
+    }
+
     const requestBody = buildRequestBody(
       normalizedPayload,
       env.OPENROUTER_MODEL || DEFAULT_MODEL,
-      merchantLookup
+      merchantContext
     );
+
     const completion = await sendOpenRouterRequest(fetchImpl, env, requestBody);
     const messageContent = completion?.choices?.[0]?.message?.content;
     const decision = parseChoiceContent(messageContent);

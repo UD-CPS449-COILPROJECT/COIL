@@ -5,8 +5,8 @@ import { validateFraudPayload } from './fraud/validateFraudPayload.js';
 import { defaultMerchantLookup } from './merchants/merchantLookup.js';
 
 // Creates the Express application with all service routes and middleware.
-export function createApp({ evaluateFraud, merchantLookup = defaultMerchantLookup } = {}) {
-  const fraudEvaluator = evaluateFraud || createFraudEvaluator({ merchantLookup });
+export function createApp({ evaluateFraud } = {}) {
+  const fraudEvaluator = evaluateFraud || createFraudEvaluator();
   const app = express();
 
   // Keep request parsing and CORS consistent for browser-hosted frontend callers.
@@ -49,11 +49,11 @@ export function createApp({ evaluateFraud, merchantLookup = defaultMerchantLooku
 
   // These merchant routes are read-only views over the versioned in-repo lookup data.
   app.get('/merchants/whitelist/:name', (req, res) => {
-    return res.json(merchantLookup.lookupWhitelist(req.params.name));
+    return res.json(defaultMerchantLookup.lookupWhitelist(req.params.name));
   });
 
   app.get('/merchants/blacklist/:name', (req, res) => {
-    return res.json(merchantLookup.lookupBlacklist(req.params.name));
+    return res.json(defaultMerchantLookup.lookupBlacklist(req.params.name));
   });
 
   app.post('/fraud-check', async (req, res) => {

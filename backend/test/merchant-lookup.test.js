@@ -22,9 +22,8 @@ function createJsonResponse(body) {
   };
 }
 
-function createMerchantTestApp(merchantLookup) {
+function createMerchantTestApp() {
   return createApp({
-    merchantLookup,
     evaluateFraud: async () => ({
       status: 'Not Flagged',
       score: 0,
@@ -188,42 +187,30 @@ test('merchant file loading rejects non-array JSON payloads', () => {
 });
 
 test('GET /merchants/whitelist/:name and GET /merchants/blacklist/:name return lookup responses', async () => {
-  const merchantLookup = createMerchantLookup({
-    whitelist: [
-      {
-        name: 'Trusted Merchant',
-        aliases: ['Trusted Merchant LLC']
-      }
-    ],
-    blacklist: [
-      {
-        name: 'Shady Vendor',
-        aliases: ['Shady Vendor LLC']
-      }
-    ]
-  });
-  const app = createMerchantTestApp(merchantLookup);
+  const app = createMerchantTestApp();
 
   const whitelistResponse = await invokeRoute(app, {
     method: 'get',
     path: '/merchants/whitelist/:name',
-    params: { name: '  Trusted Merchant LLC  ' }
+    params: { name: '  Costco  ' }
   });
   const blacklistResponse = await invokeRoute(app, {
     method: 'get',
     path: '/merchants/blacklist/:name',
-    params: { name: 'missing merchant' }
+    params: { name: 'Wire Transfer Fraud LLC' }
   });
 
   assert.equal(whitelistResponse.status, 200);
   assert.deepEqual(whitelistResponse.body, {
     found: true,
-    name: 'Trusted Merchant',
-    aliases: ['Trusted Merchant LLC']
+    name: 'Costco Wholesale',
+    aliases: ['Costco']
   });
   assert.equal(blacklistResponse.status, 200);
   assert.deepEqual(blacklistResponse.body, {
-    found: false
+    found: true,
+    name: 'Wire Transfer Scam LLC',
+    aliases: ['Wire Transfer Fraud LLC']
   });
 });
 
