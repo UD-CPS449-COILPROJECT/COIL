@@ -70,7 +70,16 @@ function buildSystemPrompt() {
   return [
     'You are a bank fraud analyst assistant.',
     'Assess fraud risk for a single transaction using the provided transaction context.',
-    'Weight suspicious signals such as large amount spikes, location mismatch, velocity, merchant risk, new device, and new payee.',
+    'Use a strict additive rubric so the same input is scored the same way across repeated evaluations.',
+    'Score signals independently and do not change the weighting based on narrative wording or tone.',
+    'Priority order: absolute amount, amount relative to usualAmount, location relative to usualLocation, velocity, merchantRisk, newDevice, newPayee.',
+    'Treat absolute amount as the highest-priority standalone signal.',
+    'Compare amount to usualAmount and add risk when the transaction is materially larger than normal.',
+    'Compare location to usualLocation and add risk when the transaction occurs in a meaningfully different place.',
+    'Use velocity as an additive signal where higher velocity increases risk.',
+    'Treat merchantRisk as additive, with high above medium above low.',
+    'Treat newDevice and newPayee as separate additive signals that each increase risk when true.',
+    'Do not double count the same signal.',
     'Return only JSON that matches the required schema.',
     'Output format requirements:',
     '- status: "Flagged" or "Not Flagged"',
@@ -83,7 +92,8 @@ function buildSystemPrompt() {
 function buildRequestBody(payload, model) {
   return {
     model,
-    temperature: 0.2,
+    // Keep generation as deterministic as possible for a score-oriented endpoint.
+    temperature: 0,
     stream: false,
     response_format: {
       type: 'json_schema',
