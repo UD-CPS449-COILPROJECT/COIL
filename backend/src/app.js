@@ -15,7 +15,7 @@ export function createApp({ evaluateFraud, merchantLookup = defaultMerchantLooku
   app.use(express.json());
 
   app.get('/', (_req, res) => {
-    res.send('Microservice Gateway\nVersion: 0.0.1');
+    res.send('Microservice Gateway\nVersion: 0.2.0');
   });
 
   app.get('/health', (_req, res) => {

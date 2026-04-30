@@ -25,7 +25,7 @@ Response:
 
 ```text
 Microservice Gateway
-Version: 0.0.1
+Version: 0.2.0
 ```
 
 ### `GET /health`
